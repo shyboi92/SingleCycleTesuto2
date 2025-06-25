@@ -1,4 +1,4 @@
-module Top(input clk, rst); 
+module TopRISCV_Single_Cycle(input clk, rst); 
 
 wire [31:0] pc_out_wire, pc_next_wire, pc_wire, decode_wire, read_data1, regtomux, WB_wire, branch_target, immgen_wire,muxtoAlu,read_data_wire,WB_data_wire;
 wire RegWrite,ALUSrc, MemRead,MemWrite,MemToReg,Branch,Zero;
