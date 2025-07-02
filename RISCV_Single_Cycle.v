@@ -1,112 +1,128 @@
-`timescale 1ns/1ps
-
 module RISCV_Single_Cycle(
-    input clk,
-    input rst_n
+    input logic clk,
+    input logic rst_n,
+    output logic [31:0] PC_out_top,
+    output logic [31:0] Instruction_out_top
 );
 
-    logic [31:0] pc_current, pc_next;
-    logic [31:0] instruction;
-    logic [31:0] imm_out;
-    logic [31:0] rs1_data, rs2_data, alu_result;
-    logic [31:0] dmem_data_out;
-    logic [3:0] alu_control;
-    logic [1:0] alu_src;
-    logic [2:0] imm_src;
-    logic mem_write, reg_write, branch;
-    logic zero;
-    logic [31:0] write_data;
+    // Program Counter
+    logic [31:0] PC_next;
+
+    // Wires for instruction fields
     logic [4:0] rs1, rs2, rd;
-    logic [6:0] opcode, funct7;
     logic [2:0] funct3;
-    logic pc_src;
-    logic [1:0] alu_op;
+    logic [6:0] opcode, funct7;
 
-    assign rs1 = instruction[19:15];
-    assign rs2 = instruction[24:20];
-    assign rd  = instruction[11:7];
-    assign funct3 = instruction[14:12];
-    assign funct7 = instruction[31:25];
-    assign opcode = instruction[6:0];
+    // Immediate value
+    logic [31:0] Imm;
 
-    // PC
+    // Register file wires
+    logic [31:0] ReadData1, ReadData2, WriteData;
+
+    // ALU
+    logic [31:0] ALU_in2, ALU_result;
+    logic ALUZero;
+
+    // Data Memory
+    logic [31:0] MemReadData;
+
+    // Control signals
+    logic [1:0] ALUSrc;
+    logic [3:0] ALUCtrl;
+    logic Branch, MemRead, MemWrite, MemToReg;
+    logic RegWrite, PCSel;
+
+    // PC update
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n)
-            pc_current <= 0;
+            PC_out_top <= 32'b0;
         else
-            pc_current <= pc_next;
+            PC_out_top <= PC_next;
     end
 
-    assign pc_src = branch & zero;
-    assign pc_next = pc_src ? (pc_current + imm_out) : (pc_current + 4);
-
-    // Instruction Memory
-    Inst_Mem IMEM_inst (
-        .addr(pc_current[31:2]),
-        .instruction(instruction)
+    // Instruction Memory (IMEM)
+    Inst_Mem IMEM_inst(
+        .addr(PC_out_top),
+        .Instruction(Instruction_out_top)
     );
 
-    // Instruction output for testbench
-    logic [31:0] Instruction_out_top;
-    assign Instruction_out_top = instruction;
+    // Instruction field decoding
+    assign opcode = Instruction_out_top[6:0];
+    assign rd     = Instruction_out_top[11:7];
+    assign funct3 = Instruction_out_top[14:12];
+    assign rs1    = Instruction_out_top[19:15];
+    assign rs2    = Instruction_out_top[24:20];
+    assign funct7 = Instruction_out_top[31:25];
 
-    // Register File
-    Reg_File RF (
+    // Immediate generator
+    Imm_Gen imm_gen(
+        .inst(Instruction_out_top),
+        .imm_out(Imm)
+    );
+
+    // Register File (instance name must be Reg_inst for tb)
+    Reg_File Reg_inst(
         .clk(clk),
+	.rst_n(rst_n),
+        .RegWrite(RegWrite),
         .rs1(rs1),
         .rs2(rs2),
         .rd(rd),
-        .rd_data(write_data),
-        .reg_write(reg_write),
-        .rs1_data(rs1_data),
-        .rs2_data(rs2_data)
+        .WriteData(WriteData),
+        .ReadData1(ReadData1),
+        .ReadData2(ReadData2)
     );
 
-    // Immediate Generator
-    Imm_Gen IG (
-        .instruction(instruction),
-        .imm_src(imm_src),
-        .imm_out(imm_out)
-    );
-
-    // ALU Decoder
-    alu_control ALUdec (
-        .alu_op(alu_op),
-        .funct3(funct3),
-        .funct7b5(instruction[30]),
-        .alu_control(alu_control)
-    );
+    // ALU input selection
+    assign ALU_in2 = (ALUSrc[0]) ? Imm : ReadData2;
 
     // ALU
-    ALU alu (
-        .a(rs1_data),
-        .b(alu_src[0] ? imm_out : rs2_data),
-        .alu_control(alu_control),
-        .result(alu_result),
-        .zero(zero)
+    ALU alu(
+        .A(ReadData1),
+        .B(ALU_in2),
+        .ALUOp(ALUCtrl),
+        .Result(ALU_result),
+        .Zero(ALUZero)
     );
 
-    // Data Memory
-    Data_Mem DMEM_inst (
+    // Data Memory (DMEM)
+    Data_Mem DMEM_inst(
         .clk(clk),
-        .addr(alu_result),
-        .write_data(rs2_data),
-        .mem_write(mem_write),
-        .read_data(dmem_data_out)
+	.rst_n(rst_n),
+        .MemRead(MemRead),
+        .MemWrite(MemWrite),
+        .addr(ALU_result),
+        .WriteData(ReadData2),
+        .ReadData(MemReadData)
     );
 
-    // Write-back Mux
-    assign write_data = (opcode == 7'b0000011) ? dmem_data_out : alu_result;
+    // Write-back mux
+    assign WriteData = (MemToReg) ? MemReadData : ALU_result;
 
-    // Control Unit
-    Control_Unit CU (
+    // Control unit
+    Control_Unit ctrl(
         .opcode(opcode),
-        .reg_write(reg_write),
-        .mem_write(mem_write),
-        .branch(branch),
-        .alu_src(alu_src),
-        .imm_src(imm_src),
-	.alu_op(alu_op)
+        .funct3(funct3),
+        .funct7(funct7),
+        .ALUSrc(ALUSrc),
+        .ALUOp(ALUCtrl),
+        .Branch(Branch),
+        .MemRead(MemRead),
+        .MemWrite(MemWrite),
+        .MemToReg(MemToReg),
+        .RegWrite(RegWrite)
     );
+
+    // Branch comparator
+    Branch_Adder comp(
+        .A(ReadData1),
+        .B(ReadData2),
+        .Branch(Branch),
+        .funct3(funct3),
+        .BrTaken(PCSel)
+    );
+
+    // Next PC logic
+    assign PC_next = (PCSel) ? PC_out_top + Imm : PC_out_top + 4;
 
 endmodule
