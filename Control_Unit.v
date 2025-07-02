@@ -1,32 +1,48 @@
-module Control_Unit( opcode, RegWrite, MemRead, MemWrite, MemToReg, ALUSrc, Branch, ALUOp );
-    input [6:0] opcode;      
-    output reg RegWrite;         
-    output reg MemRead;         
-    output reg MemWrite;         
-    output reg MemToReg;        
-    output reg ALUSrc;                    
-    output reg Branch;                        
-    output reg [1:0] ALUOp;       
+module Control_Unit(
+    input  [6:0] opcode,
+    output logic reg_write,
+    output logic mem_write,
+    output logic branch,
+    output logic [1:0] alu_src,
+    output logic [2:0] imm_src,
+    output logic [1:0] alu_op
+);
+    always_comb begin
+        // Gán mặc định tất cả output
+        reg_write = 0;
+        mem_write = 0;
+        branch    = 0;
+        alu_src   = 2'b00;
+        imm_src   = 3'b000;
+        alu_op    = 2'b00;
 
-    always @(*) begin
         case (opcode)
-            7'b0110011:  // R-type 
-            begin  {ALUSrc, MemToReg, RegWrite, MemRead, MemWrite, Branch, ALUOp} <= {1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 2'b10};end
-            7'b0010011:   // I-type
-            begin {ALUSrc, MemToReg, RegWrite, MemRead, MemWrite, Branch, ALUOp} <= {1'b1, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 2'b10};end
-            7'b0000011:   // Load 
-            begin {ALUSrc, MemToReg, RegWrite, MemRead, MemWrite, Branch, ALUOp} <= {1'b1, 1'b1, 1'b1, 1'b1, 1'b0, 1'b0, 2'b00};end
-            7'b0100011:   // Store 
-            begin {ALUSrc, MemToReg, RegWrite, MemRead, MemWrite, Branch, ALUOp} <= {1'b1, 1'b0, 1'b0, 1'b0, 1'b1, 1'b0, 2'b00};end
-            7'b1100011:   // Branch 
-            begin {ALUSrc, MemToReg, RegWrite, MemRead, MemWrite, Branch, ALUOp} <= {1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b1, 2'b11};end  
-            7'b1101111:   // Jump 
-            begin  {ALUSrc, MemToReg, RegWrite, MemRead, MemWrite, Branch, ALUOp} <= {1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 2'b10};end
-            7'b0110111:   // LUI
-            begin {ALUSrc, MemToReg, RegWrite, MemRead, MemWrite, Branch, ALUOp} <= {1'b0, 1'b0, 1'b1, 1'b0, 1'b0, 1'b0, 2'b10};end
-            default: 
-            begin {ALUSrc, MemToReg, RegWrite, MemRead, MemWrite, Branch, ALUOp} <= {1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 1'b0, 2'b00};end  
+            7'b0110011: begin  // R-type
+                reg_write = 1;
+                alu_src   = 2'b00;
+                alu_op    = 2'b10;
+            end
+            7'b0010011: begin  // I-type ALU
+                reg_write = 1;
+                alu_src   = 2'b01;
+                alu_op    = 2'b10;
+            end
+            7'b0000011: begin  // Load
+                reg_write = 1;
+                alu_src   = 2'b01;
+                alu_op    = 2'b00;
+            end
+            7'b0100011: begin  // Store
+                mem_write = 1;
+                alu_src   = 2'b01;
+                imm_src   = 3'b001;
+                alu_op    = 2'b00;
+            end
+            7'b1100011: begin  // Branch
+                branch    = 1;
+                alu_op    = 2'b01;
+                imm_src   = 3'b010;
+            end
         endcase
     end
-
 endmodule

@@ -1,10 +1,7 @@
-module Branch_Adder( PC, offset, branch_target );
-    input [31:0] PC;                
-    input [31:0] offset;                 
-    output reg [31:0] branch_target;     
-
-    always @(*) begin
-        branch_target <= PC + (offset );  
-    end
-
+module Branch_Adder(
+    input  [31:0] a,
+    input  [31:0] b,
+    output logic zero
+);
+    assign zero = (a == b);
 endmodule
