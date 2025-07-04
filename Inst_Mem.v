@@ -3,12 +3,13 @@ module Inst_Mem(
     output [31:0] Instruction
 );
     reg [31:0] memory [0:255];
-    assign Instruction = (addr[9:2] < 100) ? memory[addr[9:2]] : 32'h00000013; // NOP nếu out of range
+    // Trả về lệnh halt (32'h00000063) nếu truy cập vượt quá 128 lệnh (dành cho SC1), vẫn giữ đủ 256 dòng cho SC2
+    assign Instruction = (addr[11:2] < 128) ? memory[addr[11:2]] : 32'h00000063; // halt = beq x0, x0, 0
 
     initial begin
-        $readmemh("./mem/imem2.hex", memory);
-        $display("IMEM0: %h", memory[0]);
-        $display("IMEM1: %h", memory[1]);
-        $display("IMEM2: %h", memory[2]);
+        if ($fopen("./mem/imem2.hex", "r"))
+            $readmemh("./mem/imem2.hex", memory);
+        else if ($fopen("./mem/imem.hex", "r"))
+            $readmemh("./mem/imem.hex", memory);
     end
 endmodule
