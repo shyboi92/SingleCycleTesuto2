@@ -1,6 +1,6 @@
 module Data_Mem(
     input logic clk,
-    input logic rst_n,            // Thêm cổng reset
+    input logic rst_n,      
     input logic MemRead,
     input logic MemWrite,
     input logic [31:0] addr,

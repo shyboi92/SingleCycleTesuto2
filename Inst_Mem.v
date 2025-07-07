@@ -3,7 +3,6 @@ module Inst_Mem(
     output [31:0] Instruction
 );
     reg [31:0] memory [0:255];
-    // Trả về lệnh halt (32'h00000063) nếu truy cập vượt quá 128 lệnh (dành cho SC1), vẫn giữ đủ 256 dòng cho SC2
     assign Instruction = (addr[11:2] < 128) ? memory[addr[11:2]] : 32'h00000063; // halt = beq x0, x0, 0
 
     initial begin

@@ -7,7 +7,7 @@ module Reg_File(
     input logic [31:0] WriteData,
     output logic [31:0] ReadData1,
     output logic [31:0] ReadData2,
-    input logic rst_n              // <--- Thêm cổng reset!
+    input logic rst_n  
 );
     logic [31:0] registers [0:31];
 

@@ -5,11 +5,12 @@ module alu_control(
     output logic [3:0] alu_control
 );
     always_comb begin
-        alu_control = 4'b0010; // Gán mặc định: ADD (chuẩn cho load/store)
+        alu_control = 4'b0010; 
         case (alu_op)
-            2'b00: alu_control = 4'b0010; // ADD (load/store)
-            2'b01: alu_control = 4'b0110; // SUB (branch)
-            2'b10: begin // R-type/I-type
+            2'b00: alu_control = 4'b0010; // ADD 
+            2'b01: alu_control = 4'b0110; // SUB 
+            2'b10: 
+            begin 
             case (funct3)
                     3'b000: alu_control = (funct7b5 ? 4'b0110 : 4'b0010); // SUB : ADD
                     3'b111: alu_control = 4'b0000; // AND
